@@ -1,11 +1,9 @@
-//use iroh::{Endpoint, SecretKey, protocol::Router};
-use iroh::{Endpoint, EndpointId, PublicKey, SecretKey};
-//use std::path::PathBuf;
+use anyhow::Ok;
+use iroh::{Endpoint, PublicKey, SecretKey};
 use std::fs;
 use std::path::Path;
 
 const KEY_DIR: &str = "./.keys";
-const KEY_FILE: &str = "./.keys/secret";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -14,67 +12,104 @@ async fn main() -> anyhow::Result<()> {
 
     match arg_refs.as_slice() {
         ["endpoint", "create"] => {
-            // note: this is just for testing, keys will be stored in ./.keys/secret
-            if Path::new(KEY_FILE).exists() {
-                anyhow::bail!("stable endpoint already exists");
-            }
-
-            println!("storing keys in .keys");
-            let key = SecretKey::generate(&mut rand::rng()).to_bytes();
-            fs::create_dir_all(KEY_DIR)?;
-            fs::write(KEY_FILE, key)?;
-            println!("wrote private key to {}", KEY_FILE);
+            create_secret_key("secret").await?;
+        }
+        ["endpoint", "create", keyname] => {
+            // note: this is just for testing, keys will be stored in ./.keys/keyname
+            create_secret_key(&keyname).await?;
         }
         ["endpoint", "read"] => {
-            let secret_key = get_secret_key()?;
-            println!(
-                "this device's public key (and endpoint id) is {}",
-                secret_key.public()
-            );
+            print_endpoint("secret").await?;
         }
-        ["ping", "listen"] => {
-            println!("listening for ping");
-            let secret_key = get_secret_key()?;
-            //let endpoint_id: EndpointId = secret_key.public();
-            let endpoint = Endpoint::builder().secret_key(secret_key).bind().await?;
-            if let Some(incoming) = endpoint.accept().await {
-                println!("someone wants to know");
-                let mut iconn = incoming.accept()?;
-                let conn = iconn.await?;
-                let (mut send, mut recv) = conn.accept_bi().await?;
-                let m = recv.read_to_end(100).await?;
-                println!("{}", String::from_utf8(m)?);
-                send.write_all(b"looks like we made it").await?;
-                send.finish()?;
-            }
+        ["endpoint", "read", keyname] => {
+            print_endpoint(keyname).await?;
         }
-        ["ping", "send", addr] => {
-            println!("pinging {}", addr);
-
-            let secret_key = get_secret_key()?;
-            let endpoint = Endpoint::builder().secret_key(secret_key).bind().await?;
-            let addr: PublicKey = addr.parse()?;
-            let conn = endpoint.connect(addr, b"nateha/iroh-cli/1").await?;
-            let (mut send, mut recv) = conn.open_bi().await?;
-            println!("connection opened");
-            send.write_all(b"did we make it?").await?;
-            println!("checking to see if we made it");
-            send.finish()?;
-            let m = recv.read_to_end(100).await?;
-            println!("{}", String::from_utf8(m)?);
+        ["endpoint", "listen"] => {
+            iroh_listen("secret").await?;
+        }
+        ["endpoint", "listen", keyname] => {
+            iroh_listen(keyname).await?;
+        }
+        ["endpoint", "connect", addr] => {
+            iroh_connect("secret", addr).await?;
+        }
+        ["endpoint", "connect", from_keyname, to_endpoint_id] => {
+            iroh_connect(from_keyname, to_endpoint_id).await?;
         }
         _ => {
             println!("unknown command");
         }
     }
 
-    //let endpoint = Endpoint::bind().await?;
+    Ok(())
+}
+
+async fn create_secret_key(name: &str) -> anyhow::Result<()> {
+    let key_file = Path::new(KEY_DIR).join(name);
+    if key_file.exists() {
+        anyhow::bail!("endpoint for {} already exists", name);
+    }
+
+    println!("generated key and storing at .keys/{}", name);
+    let key = SecretKey::generate(&mut rand::rng()).to_bytes();
+    fs::create_dir_all(KEY_DIR)?;
+    fs::write(key_file, key)?;
+    println!("wrote private key to {}", name);
 
     Ok(())
 }
 
-fn get_secret_key() -> anyhow::Result<SecretKey> {
-    let secret_key_bytes = fs::read(KEY_FILE)?;
+async fn print_endpoint(name: &str) -> anyhow::Result<()> {
+    let secret_key = get_secret_key(name)?;
+    println!(
+        "this public key (and endpoint id) for {} is {}",
+        name,
+        secret_key.public()
+    );
+
+    Ok(())
+}
+
+async fn iroh_listen(keyname: &str) -> anyhow::Result<()> {
+    println!("listening for ping");
+    let secret_key = get_secret_key(keyname)?;
+    //let endpoint_id: EndpointId = secret_key.public();
+    let endpoint = Endpoint::builder().secret_key(secret_key).bind().await?;
+    if let Some(incoming) = endpoint.accept().await {
+        println!("someone wants to know");
+        let iconn = incoming.accept()?;
+        let conn = iconn.await?;
+        let (mut send, mut recv) = conn.accept_bi().await?;
+        let m = recv.read_to_end(100).await?;
+        println!("{}", String::from_utf8(m)?);
+        send.write_all(b"looks like we made it").await?;
+        send.finish()?;
+    }
+    Ok(())
+}
+
+async fn iroh_connect(from_keyname: &str, to_endpoint: &str) -> anyhow::Result<()> {
+    println!("pinging from {} to {}", from_keyname, to_endpoint);
+    let secret_key = get_secret_key(from_keyname)?;
+    let endpoint = Endpoint::builder().secret_key(secret_key).bind().await?;
+    let addr: PublicKey = to_endpoint.parse()?;
+    let conn = endpoint.connect(addr, b"nateha/iroh-cli/1").await?;
+    let (mut send, mut recv) = conn.open_bi().await?;
+    println!("connection opened");
+    send.write_all(b"did we make it?").await?;
+    println!("checking to see if we made it");
+    send.finish()?;
+    let m = recv.read_to_end(100).await?;
+    println!("{}", String::from_utf8(m)?);
+    Ok(())
+}
+
+fn get_secret_key(name: &str) -> anyhow::Result<SecretKey> {
+    let key_file = Path::new(KEY_DIR).join(name);
+    if !key_file.exists() {
+        anyhow::bail!("no key for {}", name);
+    }
+    let secret_key_bytes = fs::read(key_file)?;
     let secret_key_array: [u8; 32] = secret_key_bytes.try_into().expect("failed to read key");
     let secret_key = SecretKey::from_bytes(&secret_key_array);
     Ok(secret_key)
