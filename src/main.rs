@@ -4,6 +4,7 @@ use std::fs;
 use std::path::Path;
 
 const KEY_DIR: &str = "./.keys";
+const ALPN1: &[u8] = b"nateha/iroh-cli/1";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -74,7 +75,11 @@ async fn iroh_listen(keyname: &str) -> anyhow::Result<()> {
     println!("listening for ping");
     let secret_key = get_secret_key(keyname)?;
     //let endpoint_id: EndpointId = secret_key.public();
-    let endpoint = Endpoint::builder().secret_key(secret_key).bind().await?;
+    let endpoint = Endpoint::builder()
+        .secret_key(secret_key)
+        .alpns(vec![ALPN1.to_vec()])
+        .bind()
+        .await?;
     if let Some(incoming) = endpoint.accept().await {
         println!("someone wants to know");
         let iconn = incoming.accept()?;
