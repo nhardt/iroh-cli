@@ -89,6 +89,7 @@ async fn iroh_listen(keyname: &str) -> anyhow::Result<()> {
         println!("{}", String::from_utf8(m)?);
         send.write_all(b"looks like we made it").await?;
         send.finish()?;
+        conn.closed().await;
     }
     Ok(())
 }
@@ -106,6 +107,7 @@ async fn iroh_connect(from_keyname: &str, to_endpoint: &str) -> anyhow::Result<(
     send.finish()?;
     let m = recv.read_to_end(100).await?;
     println!("{}", String::from_utf8(m)?);
+    conn.close(0u8.into(), b"done");
     Ok(())
 }
 
