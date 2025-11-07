@@ -39,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
             let endpoint = Endpoint::builder().secret_key(secret_key).bind().await?;
             if let Some(incoming) = endpoint.accept().await {
                 println!("someone wants to know");
-                let iconn = incoming.accept()?;
+                let mut iconn = incoming.accept()?;
                 let conn = iconn.await?;
                 let (mut send, mut recv) = conn.accept_bi().await?;
                 let m = recv.read_to_end(100).await?;
