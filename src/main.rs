@@ -72,8 +72,12 @@ async fn print_endpoint(name: &str) -> anyhow::Result<()> {
 }
 
 async fn iroh_listen(keyname: &str) -> anyhow::Result<()> {
-    println!("listening for ping");
     let secret_key = get_secret_key(keyname)?;
+    println!(
+        "listening for ping on key '{}' at {}",
+        keyname,
+        secret_key.public()
+    );
     //let endpoint_id: EndpointId = secret_key.public();
     let endpoint = Endpoint::builder()
         .secret_key(secret_key)
