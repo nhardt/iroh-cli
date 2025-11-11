@@ -112,6 +112,7 @@ async fn iroh_connect(from_keyname: &str, to_endpoint: &str) -> anyhow::Result<(
     let m = recv.read_to_end(100).await?;
     println!("{}", String::from_utf8(m)?);
     conn.close(0u8.into(), b"done");
+    conn.closed().await;
     Ok(())
 }
 
