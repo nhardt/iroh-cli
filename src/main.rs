@@ -37,6 +37,12 @@ async fn main() -> anyhow::Result<()> {
         ["ping", "connect", from_keyname, to_endpoint_id] => {
             iroh_ping_connect(from_keyname, to_endpoint_id).await?;
         }
+        ["sync", "listen", keyname] => {
+            sync_listen(keyname).await?;
+        }
+        ["sync", "push", from_keyname, to_keyname] => {
+            sync_push(from_keyname, to_keyname).await?;
+        }
         _ => {
             println!("unknown command");
         }
@@ -110,6 +116,43 @@ async fn iroh_ping_connect(from_keyname: &str, to_endpoint: &str) -> anyhow::Res
     println!("{}", String::from_utf8(m)?);
     conn.close(0u8.into(), b"done");
     conn.closed().await;
+    Ok(())
+}
+
+async fn sync_listen(keyname: &str) -> anyhow::Result<()> {
+    // plan for this function
+    //
+    // get_secret_key(name)
+    //
+    // listen for connections
+    // - on connect:
+    //   - get remote endpoint id
+    //   - check ./keys/.* for a petname that matches the remote endpoint id
+    //     - matching key:
+    //       - sync_protocol_listener(remote_endpoint_id)
+    //       -
+    //
+    // sync_protocol_listener(my_endpoint_id, their_patname, their_endpoint):
+    // // presumably, the connecting party has changes for us, so:
+    // - wait for new manifest, which will be a list of files and checksums
+    // - compare manifest to on-disk layout at data/{my_endpoint_id}/mirror_for/{their_petname}
+    // - for each file, request file
+    //   - wait for file
+    //   - write file to disk
+    // - send eof
+
+    Ok(())
+}
+
+async fn sync_push(from_keyname: &str, to_keyname: &str) -> anyhow::Result<()> {
+    // plan
+    //
+    // create_manifest_for ./data/from_keyname/mirror_to/to_keyname
+    // connect_send_manifest to keyname.address
+    // while not eof:
+    //   - verify_file_request
+    //   - send_file
+
     Ok(())
 }
 
