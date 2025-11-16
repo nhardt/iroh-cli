@@ -5,6 +5,7 @@ use std::path::Path;
 
 const KEY_DIR: &str = "./.keys";
 const ALPN_PING: &[u8] = b"nateha/iroh-cli/ping";
+const ALPN_SYNC: &[u8] = b"nateha/iroh-cli/sync";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -119,11 +120,40 @@ async fn iroh_ping_connect(from_keyname: &str, to_endpoint: &str) -> anyhow::Res
     Ok(())
 }
 
+#[derive(Debug, Clone)]
+struct Sync;
+
+impl iroh::protocol::ProtocolHandler for Sync {
+    /// The `accept` method is called for each incoming connection for our ALPN.
+    ///
+    /// The returned future runs on a newly spawned tokio task, so it can run as long as
+    /// the connection lasts without blocking other connections.
+    fn accept(&self, connection: iroh::Connection) -> n0_future::boxed::BoxFuture<Result<()>> {
+        Box::pin(async move {
+            // TODO!
+
+            Ok(())
+        })
+    }
+}
+
 async fn sync_listen(keyname: &str) -> anyhow::Result<()> {
-    // plan for this function
-    //
-    // get_secret_key(name)
-    //
+    let secret_key = get_secret_key(keyname)?;
+    println!(
+        "starting sync listen for key '{}' at {}",
+        keyname,
+        secret_key.public()
+    );
+    let endpoint = Endpoint::builder()
+        .secret_key(secret_key)
+        .alpns(vec![ALPN_SYNC.to_vec()])
+        .bind()
+        .await?;
+
+    let router = iroh::protocol::Router::builder(endpoint)
+        .accept(ALPN_SYNC, Sync)
+        .spawn();
+
     // listen for connections
     // - on connect:
     //   - get remote endpoint id
