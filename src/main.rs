@@ -62,11 +62,8 @@ async fn create_secret_key(name: &str) -> anyhow::Result<()> {
 
 async fn print_endpoint(name: &str) -> anyhow::Result<()> {
     let secret_key = get_secret_key(name)?;
-    println!(
-        "this public key (and endpoint id) for {} is {}",
-        name,
-        secret_key.public()
-    );
+    eprintln!("this public key (and endpoint id) for {}:", name);
+    println!("{}", secret_key.public());
 
     Ok(())
 }
