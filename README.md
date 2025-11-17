@@ -68,18 +68,22 @@ the connecting endpoint wants to mirror there.
 
 We'll pretend to be two devices here. First create both devices, represented as unique endpoints.
 
-> cargo endpoint create dev1
-> cargo endpoint create dev2
+```
+cargo endpoint create dev1
+cargo endpoint create dev2
+```
 
 Now create on-disk structures to simulate the two devices. Each device will have
 an imagined directory they want to mirror to the remote
 
-> mkdir -p ./data/dev1/mirror_to/dev2/
-> mkdir -p ./data/dev1/mirror_from/dev2/
-> echo "# The best basketball shot I ever made" > ./data/dev1/mirror_to/dev2/escape_from_la.md
-> mkdir -p ./data/dev2/mirror_to/dev1/
-> mkdir -p ./data/dev2/mirror_from/dev1/
-> echo "# A story about how my life got turned upside down" > ./data/dev2/mirror_to/dev1/belaire.md
+```
+mkdir -p ./data/dev1/mirror_to/dev2/
+mkdir -p ./data/dev1/mirror_from/dev2/
+echo "# The best basketball shot I ever made" > ./data/dev1/mirror_to/dev2/escape_from_la.md
+mkdir -p ./data/dev2/mirror_to/dev1/
+mkdir -p ./data/dev2/mirror_from/dev1/
+echo "# A story about how my life got turned upside down" > ./data/dev2/mirror_to/dev1/belaire.md
+```
 
 We now have two theoretical devices, each with a file they want to sync to the
 other. Conceptually, dev1 owns the directory mirror_to/dev2, and any files there
@@ -92,15 +96,15 @@ Now, start one instance of the sync engine as dev1, and one as dev2
 
 Terminal 1:
 
-> cargo run sync listen dev1
+```
+cargo run sync listen dev1
+```
 
 Terminal 2:
 
-> cargo run sync push dev2 dev1
-
-In a different terminal
-
-> cargo run sync_watch_as dev2
+```
+cargo run sync push dev2 dev1
+```
 
 At this point, dev1 and dev2 will use a shared .keys directory to map a name to
 device.
